@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { 
@@ -319,17 +318,17 @@ const DataOverview = ({ activeTab, onToggleFilter, isFilterOpen, onAdd }: { acti
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex items-center shadow-sm h-[60px] mb-3">
       <div className="flex items-center gap-4 px-6 flex-1 overflow-x-auto no-scrollbar">
-        <div className="flex items-center gap-3 mr-8 shrink-0 sticky left-0 bg-white z-10 pr-4">
+        <div className={`flex items-center gap-3 ${isWorkDaily ? 'mr-4' : 'mr-8'} shrink-0 sticky left-0 bg-white z-10 pr-4`}>
           <div className="w-9 h-9 rounded-full bg-[#1890ff] flex items-center justify-center shadow-sm shadow-blue-100">
              <BarChart2 size={18} className="text-white" strokeWidth={2.5} />
           </div>
           <span className="text-[14px] font-bold text-slate-700 tracking-tight whitespace-nowrap">数据概览</span>
         </div>
-        <div className={`flex items-center ${isWorkDaily ? 'gap-10' : 'gap-16'} shrink-0`}>
+        <div className={`flex items-center ${isWorkDaily ? 'gap-3' : 'gap-16'} shrink-0`}>
           {data.map(([label, val, color]) => (
-            <div key={label} className="flex flex-row items-center gap-3 whitespace-nowrap">
-              <span className="text-[13px] text-slate-500 font-medium">{label}</span>
-              <span className="text-[22px] font-bold font-sans leading-none tracking-tight" style={{ color }}>{val}</span>
+            <div key={label} className={`flex flex-row items-center ${isWorkDaily ? 'gap-1.5' : 'gap-3'} whitespace-nowrap`}>
+              <span className={`${isWorkDaily ? 'text-[11px]' : 'text-[13px]'} text-slate-500 font-medium`}>{label}</span>
+              <span className={`${isWorkDaily ? 'text-[16px]' : 'text-[22px]'} font-bold font-sans leading-none tracking-tight`} style={{ color }}>{val}</span>
             </div>
           ))}
         </div>
@@ -576,132 +575,96 @@ const AddModal = ({ isOpen, onClose, activeTab }: { isOpen: boolean; onClose: ()
 };
 
 const App = () => {
-  const [activeTab, setActiveTab] = useState<TabType>('日报预警');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('工作日报');
+  const [isFilterOpen, setIsFilterOpen] = useState(true);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 20;
 
+  const tableData = useMemo(() => generateRows(activeTab), [activeTab]);
   const config = TAB_CONFIGS[activeTab];
-  const data = useMemo(() => generateRows(activeTab), [activeTab]);
-  
-  // 工作日报使用更窄的间距 (7.5px * 2 = 15px interval)
-  const cellPadding = activeTab === '工作日报' ? 'px-[7.5px]' : 'px-5';
 
   return (
-    <div className="h-screen bg-[#f1f4f9] p-4 flex flex-col overflow-hidden font-sans text-slate-800">
+    <div className="min-h-screen bg-[#f0f2f5] p-4 font-sans text-slate-800 flex flex-col gap-3">
       <NotificationBar />
-      <TabSelector activeTab={activeTab} onSelect={(t) => { setActiveTab(t); setCurrentPage(1); }} />
+      
+      <TabSelector activeTab={activeTab} onSelect={setActiveTab} />
+      
       <DataOverview 
         activeTab={activeTab} 
-        isFilterOpen={isFilterOpen} 
         onToggleFilter={() => setIsFilterOpen(!isFilterOpen)} 
+        isFilterOpen={isFilterOpen}
         onAdd={() => setIsAddModalOpen(true)}
       />
+
       <SearchPanel tab={activeTab} isOpen={isFilterOpen} />
-      
-      <AddModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} activeTab={activeTab} />
 
-      <div className="bg-white rounded-2xl shadow-xl border border-slate-200 flex-1 flex flex-col overflow-hidden">
-        <div className="overflow-auto flex-1 custom-scrollbar">
-          <table className="w-full text-left border-collapse min-w-[2000px]">
-            <thead className="sticky top-0 z-20 bg-slate-50 border-b border-[#cbd5e1]">
-              <tr className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">
-                <th className={`${cellPadding} py-4 text-center w-16 whitespace-nowrap`}>序号</th>
-                {config.headers.map(h => (
-                  <th key={h} className={`${cellPadding} py-4 min-w-[140px] group relative whitespace-nowrap`}>
-                    <div className="flex items-center gap-1">
-                      {h}
-                      {HEADER_TOOLTIPS[h] && (
-                        // 将 Tooltip 改为显示在下方 (top-full mt-2)，并调整箭头
-                        <div className="relative group cursor-help">
-                          <HelpCircle size={12} className="text-slate-400 hover:text-blue-500" />
-                          <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 hidden group-hover:block w-48 bg-slate-800 text-white text-[10px] p-2 rounded shadow-lg z-50 text-center font-normal leading-relaxed whitespace-normal">
-                            {HEADER_TOOLTIPS[h]}
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-slate-800"></div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </th>
-                ))}
-                <th className={`${cellPadding} py-4 w-36 text-center sticky right-0 bg-slate-50 shadow-[-10px_0_15px_rgba(0,0,0,0.03)] whitespace-nowrap`}>操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#cbd5e1]">
-              {data.map((row, idx) => (
-                <tr 
-                  key={idx} 
-                  className={`hover:bg-blue-50/50 transition-colors text-[13px] text-slate-600 h-12 ${idx % 2 === 1 ? 'bg-[#F0F9FE]' : 'bg-white'}`}
-                >
-                  <td className={`${cellPadding} py-2 text-center font-medium text-slate-400 font-mono`}>{(currentPage - 1) * pageSize + idx + 1}</td>
-                  {config.headers.map(h => {
-                    const isNum = h.includes('数') || h.includes('值') || h.includes('率') || h.includes('量');
-                    const isMono = isNum || h.includes('时间') || h.includes('日期') || h.includes('文号') || h.toLowerCase().includes('id');
-                    return (
-                      <td key={h} className={`${cellPadding} py-2 truncate max-w-[300px] ${isNum ? 'text-center' : ''} ${isMono ? 'font-mono' : ''}`}>
-                        {h === '状态' || h === '是否生效' || h === '发布状态' || h === '完成状态' || h === '批注确认状态' ? (
-                          <span className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-tight shadow-sm ${
-                            row[h] === '生效' || row[h] === '已完成' || row[h] === '已发布' 
-                            ? 'bg-[#f6ffed] text-[#52c41a] border border-[#b7eb8f]' 
-                            : 'bg-[#fff1f0] text-[#ff4d4f] border border-[#ffa39e]'
-                          }`}>
-                            {row[h]}
-                          </span>
-                        ) : row[h]}
-                      </td>
-                    );
-                  })}
-                  <td className={`${cellPadding} py-2 text-center sticky right-0 shadow-[-10px_0_15px_rgba(0,0,0,0.03)] ${idx % 2 === 1 ? 'bg-[#F0F9FE]' : 'bg-white'}`}>
-                    <div className="flex justify-center gap-4">
-                      <button className="text-[#1890ff] hover:text-blue-700 flex items-center gap-1 font-bold transition-transform hover:scale-105">
-                        <Edit size={14}/> {activeTab === '公告配置' ? '查看' : '修改'}
-                      </button>
-                      <button className="text-[#ff4d4f] hover:text-red-700 flex items-center gap-1 font-bold transition-transform hover:scale-105">
-                        <Trash2 size={14}/> {activeTab === '公告配置' ? '撤销' : '删除'}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* 分页组件 */}
-        <div className="px-6 py-3 border-t border-slate-200 flex items-center justify-center gap-4 text-[13px] bg-white">
-          <span className="text-slate-500">共 128 条</span>
-          <div className="flex items-center justify-between border border-slate-200 rounded px-2 h-7 min-w-[90px] cursor-pointer hover:border-blue-400 transition-all">
-            <span className="text-slate-600">20条/页</span>
-            <ChevronDown size={14} className="text-slate-400" />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button className="w-7 h-7 border border-slate-200 rounded-md flex items-center justify-center bg-white hover:border-blue-400 hover:text-blue-500 transition-all text-slate-400">
-               <ChevronLeft size={14} />
-            </button>
-            {[1, 2, 3, 4, 5, 6, 7].map(page => (
-              <button 
-                key={page} 
-                className={`w-7 h-7 border rounded-md flex items-center justify-center text-[13px] font-medium transition-all font-mono ${
-                  page === 1 
-                    ? 'bg-[#1890ff] text-white border-[#1890ff]' 
-                    : 'bg-white border-slate-200 text-slate-600 hover:border-blue-400 hover:text-blue-500'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-            <button className="w-7 h-7 border border-slate-200 rounded-md flex items-center justify-center bg-white hover:border-blue-400 hover:text-blue-500 transition-all text-slate-400">
-               <ChevronRight size={14} />
-            </button>
-          </div>
-          <div className="flex items-center gap-2 text-slate-500">
-            <span>前往</span>
-            <input type="text" defaultValue="1" className="w-10 h-7 border border-slate-200 rounded-md text-center text-[13px] outline-none focus:border-[#1890ff] transition-all" />
-            <span>页</span>
-          </div>
-        </div>
+      {/* Table Section */}
+      <div className="bg-white border border-slate-200 rounded-xl shadow-sm flex-1 overflow-hidden flex flex-col min-h-0">
+         <div className="overflow-auto flex-1 custom-scrollbar">
+            <table className="w-full text-left border-collapse">
+               <thead className="sticky top-0 z-10 shadow-sm">
+                  <tr>
+                    {config.headers.map((h, i) => (
+                      <th 
+                        key={i} 
+                        className="bg-slate-50 px-4 py-3 text-[13px] font-bold text-slate-700 border-b border-r border-slate-200 last:border-r-0 whitespace-nowrap group relative"
+                      >
+                         <div className="flex items-center justify-between gap-2">
+                           <span>{h}</span>
+                           {HEADER_TOOLTIPS[h] && (
+                             <div className="group relative">
+                               <HelpCircle size={14} className="text-slate-400 cursor-help" />
+                               <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block w-48 bg-slate-800 text-white text-xs p-2 rounded z-50 text-center shadow-lg">
+                                 {HEADER_TOOLTIPS[h]}
+                                 <div className="absolute left-1/2 -translate-x-1/2 top-full border-4 border-transparent border-t-slate-800"></div>
+                               </div>
+                             </div>
+                           )}
+                         </div>
+                      </th>
+                    ))}
+                    <th className="bg-slate-50 px-4 py-3 text-[13px] font-bold text-slate-700 border-b border-slate-200 whitespace-nowrap sticky right-0 z-20 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)]">
+                      操作
+                    </th>
+                  </tr>
+               </thead>
+               <tbody>
+                  {tableData.map((row, idx) => (
+                    <tr key={row.id} className="hover:bg-blue-50/50 transition-colors border-b border-slate-100 last:border-0 group">
+                       {config.headers.map((h, colIdx) => (
+                         <td key={colIdx} className="px-4 py-2.5 text-[13px] text-slate-600 border-r border-slate-100 last:border-r-0 whitespace-nowrap max-w-[200px] truncate">
+                           {row[h]}
+                         </td>
+                       ))}
+                       <td className="px-4 py-2.5 bg-white border-l border-slate-100 sticky right-0 shadow-[-10px_0_10px_-5px_rgba(0,0,0,0.05)]">
+                         <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                           <button className="text-blue-500 hover:text-blue-700" title="编辑"><Edit size={14} /></button>
+                           <button className="text-red-500 hover:text-red-700" title="删除"><Trash2 size={14} /></button>
+                         </div>
+                       </td>
+                    </tr>
+                  ))}
+               </tbody>
+            </table>
+         </div>
+         
+         {/* Pagination */}
+         <div className="flex items-center justify-between px-6 py-3 border-t border-slate-200 bg-slate-50 text-[13px] text-slate-500">
+            <span>共 400 条记录</span>
+            <div className="flex items-center gap-2">
+               <button className="w-7 h-7 flex items-center justify-center border border-slate-200 rounded bg-white hover:border-blue-400 hover:text-blue-500 transition-all disabled:opacity-50"><ChevronLeft size={14} /></button>
+               <div className="flex items-center gap-1">
+                 <button className="w-7 h-7 flex items-center justify-center border border-blue-500 bg-blue-500 text-white rounded">1</button>
+                 <button className="w-7 h-7 flex items-center justify-center border border-slate-200 rounded bg-white hover:border-blue-400 hover:text-blue-500 transition-all">2</button>
+                 <button className="w-7 h-7 flex items-center justify-center border border-slate-200 rounded bg-white hover:border-blue-400 hover:text-blue-500 transition-all">3</button>
+                 <span className="px-1">...</span>
+                 <button className="w-7 h-7 flex items-center justify-center border border-slate-200 rounded bg-white hover:border-blue-400 hover:text-blue-500 transition-all">20</button>
+               </div>
+               <button className="w-7 h-7 flex items-center justify-center border border-slate-200 rounded bg-white hover:border-blue-400 hover:text-blue-500 transition-all"><ChevronRight size={14} /></button>
+            </div>
+         </div>
       </div>
+
+      <AddModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} activeTab={activeTab} />
     </div>
   );
 };
